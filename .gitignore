@@ -1,0 +1,12 @@
+# 排除 .claude 文件夹
+.claude/
+
+# 排除 occt-7.5.0 文件夹
+occt-7.5.0/
+
+.vs
+
+x64/
+Debug/
+
+test_models/
