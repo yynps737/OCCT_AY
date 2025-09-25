@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weld Detection Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; font-family: Arial; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+        }
+        #legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .control-item {
+            margin: 5px 0;
+        }
+        .control-item label {
+            margin-left: 5px;
+            cursor: pointer;
+        }
+        .legend-item {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+        }
+        .color-box {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border: 1px solid white;
+        }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>Detected Corner Welds</h3>
+        <div id="weldList"></div>
+    </div>
+
+    <div id="legend">
+        <h4>Legend</h4>
+        <div class="legend-item">
+            <div class="color-box" style="background-color: #ff0000;"></div>
+            <span>Red Line = Detected Corner Weld</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background-color: #808080;"></div>
+            <span>Gray Line = Non-Weld Edge</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background-color: #ffff00;"></div>
+            <span>Yellow Sphere = Weld Midpoint</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background-color: #ffffff;"></div>
+            <span>White Sphere = Non-Weld Midpoint</span>
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: linear-gradient(90deg, red 33%, green 33%, green 66%, blue 66%);"></div>
+            <span>XYZ Axes = World Coordinates</span>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px;">
+            <div>X-Axis (Red) = Horizontal</div>
+            <div>Y-Axis (Green) = Vertical</div>
+            <div>Z-Axis (Blue) = Depth</div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <h4>View Controls</h4>
+        <div class="control-item">
+            <input type="checkbox" id="toggleGrid" checked>
+            <label for="toggleGrid">Show Grid</label>
+        </div>
+        <div class="control-item">
+            <input type="checkbox" id="toggleAxes" checked>
+            <label for="toggleAxes">Show XYZ Axes</label>
+        </div>
+        <div class="control-item">
+            <input type="checkbox" id="toggleWelds" checked>
+            <label for="toggleWelds">Show Weld Lines (Red)</label>
+        </div>
+        <div class="control-item">
+            <input type="checkbox" id="toggleNonWelds" checked>
+            <label for="toggleNonWelds">Show Non-Weld Edges (Gray)</label>
+        </div>
+        <div class="control-item">
+            <input type="checkbox" id="toggleWeldSpheres" checked>
+            <label for="toggleWeldSpheres">Show Weld Markers</label>
+        </div>
+        <div class="control-item">
+            <input type="checkbox" id="toggleNonWeldSpheres" checked>
+            <label for="toggleNonWeldSpheres">Show Non-Weld Markers</label>
+        </div>
+        <hr style="border-color: #666;">
+        <div style="font-size: 12px; margin-top: 10px;">
+            <div><b>Mouse Controls:</b></div>
+            <div>Left Button: Rotate</div>
+            <div>Scroll: Zoom</div>
+            <div>Right Button: Pan</div>
+        </div>
+    </div>
+
+    <script>
+        // Three.js scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222);
+
+        const camera = new THREE.PerspectiveCamera(
+            75, window.innerWidth / window.innerHeight, 0.1, 10000
+        );
+        camera.position.set(500, 500, 500);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        // Grid helper
+        const gridHelper = new THREE.GridHelper(1000, 20);
+        scene.add(gridHelper);
+
+        // Axes helper
+        const axesHelper = new THREE.AxesHelper(100);
+        scene.add(axesHelper);
+
+        const weldData = [
+        {start: [-180, 10, 20], end: [-180, 10, 170], length: 150, confidence: 1, angle: 90, isWeld: true, edgeId: 1},
+        {start: [-180, 10, 20], end: [-180, 150, 20], length: 140, confidence: 1, angle: 90, isWeld: true, edgeId: 2},
+        {start: [-180, 150, 20], end: [-180, 150, 170], length: 150, confidence: 0, angle: 90, isWeld: false, edgeId: 3},
+        {start: [-180, 10, 170], end: [-180, 150, 170], length: 140, confidence: 0, angle: 90, isWeld: false, edgeId: 4},
+        {start: [-180, -150, 20], end: [-180, -150, 170], length: 150, confidence: 0, angle: 90, isWeld: false, edgeId: 5},
+        {start: [-180, -150, 20], end: [-180, -10, 20], length: 140, confidence: 1, angle: 90, isWeld: true, edgeId: 6},
+        {start: [-180, -10, 20], end: [-180, -10, 170], length: 150, confidence: 1, angle: 90, isWeld: true, edgeId: 7},
+        {start: [-180, -150, 170], end: [-180, -10, 170], length: 140, confidence: 0, angle: 90, isWeld: false, edgeId: 8},
+        {start: [200, -10, 20], end: [-180, -10, 20], length: 380, confidence: 1, angle: 90, isWeld: true, edgeId: 9},
+        {start: [200, -10, 20], end: [200, -10, 170], length: 150, confidence: 0, angle: 90, isWeld: false, edgeId: 10},
+        {start: [200, -10, 170], end: [-180, -10, 170], length: 380, confidence: 0, angle: 90, isWeld: false, edgeId: 11},
+        {start: [200, 10, 20], end: [200, 10, 170], length: 150, confidence: 0, angle: 90, isWeld: false, edgeId: 12},
+        {start: [-180, 10, 20], end: [200, 10, 20], length: 380, confidence: 1, angle: 90, isWeld: true, edgeId: 13},
+        {start: [-180, 10, 170], end: [200, 10, 170], length: 380, confidence: 0, angle: 90, isWeld: false, edgeId: 14},
+        {start: [200, 10, 20], end: [200, 150, 20], length: 140, confidence: 0, angle: 90, isWeld: false, edgeId: 15},
+        {start: [-180, 150, 20], end: [200, 150, 20], length: 380, confidence: 0, angle: 90, isWeld: false, edgeId: 16},
+        {start: [200, -150, 20], end: [-180, -150, 20], length: 380, confidence: 0, angle: 90, isWeld: false, edgeId: 17},
+        {start: [200, -150, 20], end: [200, -10, 20], length: 140, confidence: 0, angle: 90, isWeld: false, edgeId: 18},
+        {start: [200, -150, 0], end: [200, -150, 20], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 19},
+        {start: [200, -150, 0], end: [200, 150, 0], length: 300, confidence: 0, angle: 90, isWeld: false, edgeId: 20},
+        {start: [200, 150, 0], end: [200, 150, 20], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 21},
+        {start: [200, -10, 170], end: [200, 10, 170], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 22},
+        {start: [-200, -150, 0], end: [-200, -150, 170], length: 170, confidence: 0, angle: 90, isWeld: false, edgeId: 23},
+        {start: [200, -150, 0], end: [-200, -150, 0], length: 400, confidence: 0, angle: 90, isWeld: false, edgeId: 24},
+        {start: [-180, -150, 170], end: [-200, -150, 170], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 25},
+        {start: [-200, 150, 0], end: [200, 150, 0], length: 400, confidence: 0, angle: 90, isWeld: false, edgeId: 26},
+        {start: [-200, 150, 0], end: [-200, 150, 170], length: 170, confidence: 0, angle: 90, isWeld: false, edgeId: 27},
+        {start: [-200, 150, 170], end: [-180, 150, 170], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 28},
+        {start: [-200, 150, 0], end: [-200, -150, 0], length: 300, confidence: 0, angle: 90, isWeld: false, edgeId: 29},
+        {start: [-200, 150, 170], end: [-200, -150, 170], length: 300, confidence: 0, angle: 90, isWeld: false, edgeId: 30}
+    ];
+
+        // Groups for organizing objects
+        const weldLines = new THREE.Group();
+        const weldSpheres = new THREE.Group();
+        const nonWeldLines = new THREE.Group();
+        const nonWeldSpheres = new THREE.Group();
+        scene.add(weldLines);
+        scene.add(weldSpheres);
+        scene.add(nonWeldLines);
+        scene.add(nonWeldSpheres);
+
+        // Function to add edge to scene
+        function addEdge(edge, index) {
+            const points = [];
+            points.push(new THREE.Vector3(...edge.start));
+            points.push(new THREE.Vector3(...edge.end));
+
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+            // Different colors for welds vs non-welds
+            const isWeld = edge.isWeld;
+            const material = new THREE.LineBasicMaterial({
+                color: isWeld ? 0xff0000 : 0x808080,  // Red for welds, gray for non-welds
+                linewidth: isWeld ? 5 : 2
+            });
+
+            const line = new THREE.Line(geometry, material);
+            if (isWeld) {
+                weldLines.add(line);
+            } else {
+                nonWeldLines.add(line);
+            }
+
+            // Add sphere at midpoint
+            const midpoint = new THREE.Vector3(
+                (edge.start[0] + edge.end[0]) / 2,
+                (edge.start[1] + edge.end[1]) / 2,
+                (edge.start[2] + edge.end[2]) / 2
+            );
+
+            const sphereGeometry = new THREE.SphereGeometry(isWeld ? 10 : 5, 16, 16);
+            const sphereMaterial = new THREE.MeshBasicMaterial({
+                color: isWeld ? 0xffff00 : 0xffffff  // Yellow for welds, white for non-welds
+            });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.copy(midpoint);
+
+            if (isWeld) {
+                weldSpheres.add(sphere);
+            } else {
+                nonWeldSpheres.add(sphere);
+            }
+
+            // Update info panel - only for detected welds
+            if (isWeld) {
+                const weldInfo = document.getElementById('weldList');
+                weldInfo.innerHTML += `
+                    <div>
+                        Edge ${edge.edgeId}: L=${edge.length.toFixed(1)}mm,
+                        Angle=${edge.angle.toFixed(0)}°,
+                        Conf=${edge.confidence.toFixed(2)}<br>
+                        Pos: [${midpoint.x.toFixed(0)}, ${midpoint.y.toFixed(0)}, ${midpoint.z.toFixed(0)}]
+                    </div>
+                `;
+            }
+        }
+
+        // Add all edges
+        let weldCount = 0;
+        let totalCount = 0;
+        weldData.forEach((edge, index) => {
+            addEdge(edge, index);
+            totalCount++;
+            if (edge.isWeld) weldCount++;
+        });
+
+        // Update header with counts
+        document.getElementById('info').innerHTML = `
+            <h3>Edge Analysis Results</h3>
+            <p>Detected Welds: ${weldCount} / ${totalCount} edges</p>
+            <div id="weldList"></div>
+        `;
+
+        // Re-populate weld list
+        weldData.forEach((edge, index) => {
+            if (edge.isWeld) {
+                const midpoint = {
+                    x: (edge.start[0] + edge.end[0]) / 2,
+                    y: (edge.start[1] + edge.end[1]) / 2,
+                    z: (edge.start[2] + edge.end[2]) / 2
+                };
+                const weldInfo = document.getElementById('weldList');
+                weldInfo.innerHTML += `
+                    <div>
+                        Edge ${edge.edgeId}: L=${edge.length.toFixed(1)}mm,
+                        Angle=${edge.angle.toFixed(0)}°,
+                        Conf=${edge.confidence.toFixed(2)}<br>
+                        Pos: [${midpoint.x.toFixed(0)}, ${midpoint.y.toFixed(0)}, ${midpoint.z.toFixed(0)}]
+                    </div>
+                `;
+            }
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Toggle controls
+        document.getElementById('toggleGrid').addEventListener('change', (e) => {
+            gridHelper.visible = e.target.checked;
+        });
+
+        document.getElementById('toggleAxes').addEventListener('change', (e) => {
+            axesHelper.visible = e.target.checked;
+        });
+
+        document.getElementById('toggleWelds').addEventListener('change', (e) => {
+            weldLines.visible = e.target.checked;
+        });
+
+        document.getElementById('toggleNonWelds').addEventListener('change', (e) => {
+            nonWeldLines.visible = e.target.checked;
+        });
+
+        document.getElementById('toggleWeldSpheres').addEventListener('change', (e) => {
+            weldSpheres.visible = e.target.checked;
+        });
+
+        document.getElementById('toggleNonWeldSpheres').addEventListener('change', (e) => {
+            nonWeldSpheres.visible = e.target.checked;
+        });
+    </script>
+</body>
+</html>

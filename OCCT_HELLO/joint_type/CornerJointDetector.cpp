@@ -19,6 +19,9 @@
 #include <gp_Pnt.hxx>
 #include <iostream>
 #include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <cmath>
 
 #ifndef M_PI
@@ -90,6 +93,7 @@ CornerJointDetector::WeldFeatures CornerJointDetector::analyzeEdge(
     // 1. 基础信息
     features.edgeLength = getEdgeLength(edge);
     getEdgeMidpoint(edge, features.edgeMidpoint);
+    getEdgeEndpoints(edge, features.edgeStart, features.edgeEnd);
 
     // 2. 计算法向量
     calculateFaceNormal(face1, edge, features.normal1);
@@ -345,6 +349,22 @@ void CornerJointDetector::getEdgeMidpoint(const TopoDS_Edge& edge, double point[
     point[2] = pnt.Z();
 }
 
+void CornerJointDetector::getEdgeEndpoints(const TopoDS_Edge& edge, double start[3], double end[3]) {
+    BRepAdaptor_Curve curveAdaptor(edge);
+
+    // Get start point
+    gp_Pnt startPnt = curveAdaptor.Value(curveAdaptor.FirstParameter());
+    start[0] = startPnt.X();
+    start[1] = startPnt.Y();
+    start[2] = startPnt.Z();
+
+    // Get end point
+    gp_Pnt endPnt = curveAdaptor.Value(curveAdaptor.LastParameter());
+    end[0] = endPnt.X();
+    end[1] = endPnt.Y();
+    end[2] = endPnt.Z();
+}
+
 // ==================== 批量分析 ====================
 
 std::vector<CornerJointDetector::WeldFeatures> CornerJointDetector::analyzeAllEdges(const TopoDS_Solid& solid) {
@@ -408,6 +428,11 @@ void CornerJointDetector::printFeatures(const WeldFeatures& features) const {
     // Result
     if (features.isCornerWeld) {
         std::cout << "|[WELD]|Conf=" << std::setprecision(2) << features.confidence;
+        // Add coordinate info for verification
+        std::cout << "|Pos[" << std::fixed << std::setprecision(0)
+                  << features.edgeMidpoint[0] << ","
+                  << features.edgeMidpoint[1] << ","
+                  << features.edgeMidpoint[2] << "]";
     } else {
         std::cout << "|[SKIP]|Reason:";
         // Output exclusion reason
@@ -420,4 +445,94 @@ void CornerJointDetector::printFeatures(const WeldFeatures& features) const {
     }
 
     std::cout << std::endl;
+}
+
+// ==================== Visualization Export ====================
+
+bool CornerJointDetector::exportVisualizationHTML(const std::vector<WeldFeatures>& welds,
+                                                  const std::string& outputPath) {
+    // Read the HTML template
+    std::string templatePath = "C:\\hgtech\\OCCT\\test\\OCCT_HELLO\\OCCT_HELLO\\joint_type\\visualization_html_template.html";
+    std::ifstream templateFile(templatePath);
+    if (!templateFile.is_open()) {
+        std::cerr << "Error: Cannot open HTML template file: " << templatePath << std::endl;
+        return false;
+    }
+
+    std::stringstream buffer;
+    buffer << templateFile.rdbuf();
+    std::string htmlContent = buffer.str();
+    templateFile.close();
+
+    // Generate JavaScript array of weld data
+    std::stringstream weldDataJs;
+    weldDataJs << "const weldData = [\n";
+
+    // Count edges
+    int detectedCount = 0;
+    int totalCount = 0;
+    for (const auto& weld : welds) {
+        totalCount++;
+        if (weld.isCornerWeld) detectedCount++;
+    }
+
+    std::cout << "Export: Found " << detectedCount << " corner welds out of "
+              << totalCount << " total edges" << std::endl;
+
+    bool firstEdge = true;
+    for (size_t i = 0; i < welds.size(); ++i) {
+        const WeldFeatures& weld = welds[i];
+
+        if (!firstEdge) {
+            weldDataJs << ",\n";
+        }
+        firstEdge = false;
+
+        // Include ALL edges with their detection status
+        weldDataJs << "        {";
+        weldDataJs << "start: [" << weld.edgeStart[0] << ", "
+                  << weld.edgeStart[1] << ", "
+                  << weld.edgeStart[2] << "], ";
+        weldDataJs << "end: [" << weld.edgeEnd[0] << ", "
+                  << weld.edgeEnd[1] << ", "
+                  << weld.edgeEnd[2] << "], ";
+        weldDataJs << "length: " << weld.edgeLength << ", ";
+        weldDataJs << "confidence: " << weld.confidence << ", ";
+        weldDataJs << "angle: " << weld.dihedralAngle << ", ";
+        weldDataJs << "isWeld: " << (weld.isCornerWeld ? "true" : "false") << ", ";
+        weldDataJs << "edgeId: " << weld.edgeId;
+        weldDataJs << "}";
+    }
+
+    weldDataJs << "\n    ];";
+
+    // Replace placeholder with actual data
+    // Find the entire weldData block to replace
+    size_t placeholderPos = htmlContent.find("// WELD_DATA_PLACEHOLDER");
+    if (placeholderPos != std::string::npos) {
+        // Find the end of the weldData array (look for "];")
+        size_t endPos = htmlContent.find("];", placeholderPos);
+        if (endPos != std::string::npos) {
+            // Replace from placeholder to end of array definition
+            htmlContent.replace(placeholderPos, endPos - placeholderPos + 2,
+                              weldDataJs.str());
+        }
+    } else {
+        std::cerr << "Warning: Could not find WELD_DATA_PLACEHOLDER in template" << std::endl;
+    }
+
+    // Write the output file
+    std::ofstream outputFile(outputPath);
+    if (!outputFile.is_open()) {
+        std::cerr << "Error: Cannot create output file: " << outputPath << std::endl;
+        return false;
+    }
+
+    outputFile << htmlContent;
+    outputFile.close();
+
+    std::cout << "Visualization exported to: " << outputPath << std::endl;
+    std::cout << "Open this file in a web browser to view the 3D visualization." << std::endl;
+
+    return true;
 }

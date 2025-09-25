@@ -8,8 +8,14 @@
 #include "ShapeAnalyzer.h"
 #include "modules/edge_on_face/EdgeOnFaceDetector.h"
 #include "JointDetector.h"
+#include "joint_type/CornerJointDetector.h"
+#include <TopExp_Explorer.hxx>
+#include <TopoDS.hxx>
+#include <TopoDS_Solid.hxx>
 #include <iostream>
 #include <conio.h>
+#include <string>
+#include <vector>
 
 // 显示程序标题
 void showHeader() {
@@ -176,6 +182,35 @@ void analyzeModel(const FileManager::ModelFile& model) {
 
             // 显示结果
             JointDetector::displayResults(joints);
+
+            // Export HTML visualization for corner joints
+            if (config.detectCornerJoint && !joints.empty()) {
+                std::cout << "\nGenerating HTML visualization for corner joints..." << std::endl;
+
+                // Get detailed analysis from corner detector for visualization
+                CornerJointDetector* cornerDetector = new CornerJointDetector();
+
+                // Analyze all edges to get detailed features
+                std::vector<CornerJointDetector::WeldFeatures> weldFeatures;
+
+                // For each solid in the shape
+                TopExp_Explorer solidExp(shape, TopAbs_SOLID);
+                while (solidExp.More()) {
+                    TopoDS_Solid solid = TopoDS::Solid(solidExp.Current());
+                    auto features = cornerDetector->analyzeAllEdges(solid);
+                    weldFeatures.insert(weldFeatures.end(), features.begin(), features.end());
+                    solidExp.Next();
+                }
+
+                // Export to HTML
+                std::string htmlPath = "C:\\hgtech\\OCCT\\test\\OCCT_HELLO\\weld_visualization.html";
+                if (cornerDetector->exportVisualizationHTML(weldFeatures, htmlPath)) {
+                    std::cout << "Visualization saved to: " << htmlPath << std::endl;
+                    std::cout << "Open the file in a web browser to view the 3D visualization." << std::endl;
+                }
+
+                delete cornerDetector;
+            }
         }
 
         std::cout << "\nAnalysis complete for: " << model.fileName << std::endl;

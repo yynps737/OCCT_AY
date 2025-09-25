@@ -26,14 +26,16 @@ public:
         bool bothFacesPlanar;     // 两面都是平面
 
         // 判定结果
-        bool isCornerWeld;        // 是否为角焊缝
-        double confidence;        // 置信度 (0-1)
+        bool isCornerWeld;        // Is corner weld
+        double confidence;        // Confidence (0-1)
 
-        // 调试信息
-        double edgeMidpoint[3];   // 边中点
-        double normal1[3];        // 面1法向量
-        double normal2[3];        // 面2法向量
-        double bisectorDir[3];    // 角平分线方向
+        // Debug info
+        double edgeMidpoint[3];   // Edge midpoint
+        double edgeStart[3];      // Edge start point
+        double edgeEnd[3];        // Edge end point
+        double normal1[3];        // Face 1 normal vector
+        double normal2[3];        // Face 2 normal vector
+        double bisectorDir[3];    // Angle bisector direction
 
         // 测试点状态
         enum PointState { IN, OUT, ON };
@@ -62,10 +64,14 @@ public:
                                     const TopoDS_Solid& solid,
                                     double& confidence);
 
-    // 批量分析接口（用于调试）
+    // Batch analysis interface (for debugging)
     std::vector<WeldFeatures> analyzeAllEdges(const TopoDS_Solid& solid);
 
-    // 单边分析（获取详细特征）
+    // Export detected welds to HTML visualization
+    bool exportVisualizationHTML(const std::vector<WeldFeatures>& welds,
+                                const std::string& outputPath);
+
+    // Single edge analysis (get detailed features)
     WeldFeatures analyzeEdge(const TopoDS_Edge& edge,
                             const TopoDS_Face& face1,
                             const TopoDS_Face& face2,
@@ -77,19 +83,19 @@ public:
         double minDihedralAngle = 75.0;
         double maxDihedralAngle = 105.0;
 
-        // 边长过滤（mm）
-        double minEdgeLength = 50.0;  // 提高到50mm，排除小连接特征
+        // Edge length filter (mm)
+        double minEdgeLength = 50.0;  // Increased to 50mm to exclude small connection features
 
-        // 边界距离过滤（mm）
+        // Boundary distance filter (mm)
         double minBoundaryDistance = 5.0;
 
         // 测试点偏移距离（mm）
         double testPointOffset = 1.0;
 
-        // 数值容差
+        // Numerical tolerance
         double tolerance = 1e-6;
 
-        // 是否输出调试信息
+        // Enable debug output
         bool enableDebugOutput = true;
     };
 
@@ -99,7 +105,7 @@ public:
 private:
     Config m_config;
 
-    // 核心算法实现
+    // Core algorithm implementation
     double calculateDihedralAngle(const TopoDS_Face& face1,
                                  const TopoDS_Face& face2,
                                  const TopoDS_Edge& edge);
@@ -116,7 +122,7 @@ private:
     bool areBothFacesPlanar(const TopoDS_Face& face1,
                            const TopoDS_Face& face2);
 
-    // 辅助函数
+    // Helper functions
     void calculateFaceNormal(const TopoDS_Face& face,
                             const TopoDS_Edge& edge,
                             double normal[3]);
@@ -125,6 +131,8 @@ private:
 
     void getEdgeMidpoint(const TopoDS_Edge& edge, double point[3]);
 
-    // 调试输出
+    void getEdgeEndpoints(const TopoDS_Edge& edge, double start[3], double end[3]);
+
+    // Debug output
     void printFeatures(const WeldFeatures& features) const;
 };
