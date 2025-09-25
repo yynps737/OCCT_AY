@@ -3,6 +3,8 @@
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS_Face.hxx>
+#include <TopoDS_Solid.hxx>
+#include <gp_Vec.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopTools_IndexedDataMapOfShapeListOfShape.hxx>
 #include "modules/edge_on_face/EdgeOnFaceDetector.h"
@@ -107,8 +109,20 @@ private:
     // 计算两面夹角
     double calculateAngle(const TopoDS_Face& face1, const TopoDS_Face& face2);
 
+    // 计算面的法向量（在边的中点处）
+    gp_Vec calculateFaceNormal(const TopoDS_Face& face, const TopoDS_Edge& edge);
+
     // 识别接头类型
     JointType identifyJointType(const TopoDS_Edge& edge,
                                 const TopoDS_Face& face1,
                                 const TopoDS_Face& face2);
+
+    // 识别接头类型（带solid参数，用于corner joint的改进检测）
+    JointType identifyJointTypeWithSolid(const TopoDS_Edge& edge,
+                                         const TopoDS_Face& face1,
+                                         const TopoDS_Face& face2,
+                                         const TopoDS_Solid& solid);
+
+    // 判断是否应该添加该类型的接头
+    bool shouldAddJoint(JointType type);
 };

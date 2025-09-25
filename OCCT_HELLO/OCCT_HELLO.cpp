@@ -10,12 +10,19 @@
 #include "JointDetector.h"
 #include "joint_type/CornerJointDetector.h"
 #include <TopExp_Explorer.hxx>
+#include <TopExp.hxx>
+#include <TopTools_IndexedMapOfShape.hxx>
 #include <TopoDS.hxx>
 #include <TopoDS_Solid.hxx>
+#include <BRepAdaptor_Curve.hxx>
+#include <GCPnts_AbscissaPoint.hxx>
+#include <GeomAbs_CurveType.hxx>
+#include <gp_Pnt.hxx>
 #include <iostream>
 #include <conio.h>
 #include <string>
 #include <vector>
+#include <set>
 
 // 显示程序标题
 void showHeader() {
@@ -184,29 +191,124 @@ void analyzeModel(const FileManager::ModelFile& model) {
             JointDetector::displayResults(joints);
 
             // Export HTML visualization for corner joints
-            if (config.detectCornerJoint && !joints.empty()) {
-                std::cout << "\nGenerating HTML visualization for corner joints..." << std::endl;
+            if (config.detectCornerJoint) {
+                std::cout << "\nGenerating HTML visualization..." << std::endl;
 
-                // Get detailed analysis from corner detector for visualization
+                // Create corner detector for visualization
                 CornerJointDetector* cornerDetector = new CornerJointDetector();
 
-                // Analyze all edges to get detailed features
-                std::vector<CornerJointDetector::WeldFeatures> weldFeatures;
+                // Collect ALL edges from the shape for complete visualization
+                std::vector<CornerJointDetector::WeldFeatures> allEdgeFeatures;
 
-                // For each solid in the shape
-                TopExp_Explorer solidExp(shape, TopAbs_SOLID);
-                while (solidExp.More()) {
-                    TopoDS_Solid solid = TopoDS::Solid(solidExp.Current());
-                    auto features = cornerDetector->analyzeAllEdges(solid);
-                    weldFeatures.insert(weldFeatures.end(), features.begin(), features.end());
-                    solidExp.Next();
+                // Now iterate through ALL edges in the shape
+                // Use TopTools_IndexedMapOfShape to avoid duplicates
+                TopTools_IndexedMapOfShape edgeMap;
+                TopExp::MapShapes(shape, TopAbs_EDGE, edgeMap);
+
+                int featureIndex = 0;
+                int cornerJointCount = 0;
+                int totalEdgeCount = edgeMap.Extent();
+
+                // Track which joints have been matched to avoid double counting
+                std::set<const JointDetector::JointData*> matchedJoints;
+
+                for (int i = 1; i <= edgeMap.Extent(); i++) {
+                    const TopoDS_Edge& edge = TopoDS::Edge(edgeMap(i));
+
+                    CornerJointDetector::WeldFeatures feature;
+
+                    // Get edge geometry
+                    BRepAdaptor_Curve curveAdaptor(edge);
+                    double edgeLength = GCPnts_AbscissaPoint::Length(curveAdaptor);
+
+                    // Skip very small edges (< 1mm)
+                    if (edgeLength < 1.0) continue;
+
+                    // Get edge midpoint
+                    double first = curveAdaptor.FirstParameter();
+                    double last = curveAdaptor.LastParameter();
+                    double mid = (first + last) / 2.0;
+                    gp_Pnt midPnt = curveAdaptor.Value(mid);
+
+                    // Get edge endpoints
+                    gp_Pnt startPnt = curveAdaptor.Value(first);
+                    gp_Pnt endPnt = curveAdaptor.Value(last);
+
+                    // Fill feature data
+                    feature.edgeId = ++featureIndex;
+                    feature.edgeLength = edgeLength;
+
+                    // Check if this edge is a detected corner joint
+                    bool isCornerJoint = false;
+                    for (const auto& joint : joints) {
+                        if (joint.type == JointDetector::CORNER_JOINT &&
+                            joint.edge.IsSame(edge)) {
+                            isCornerJoint = true;
+                            feature.face1Id = joint.solid1Id;
+                            feature.face2Id = joint.solid2Id;
+                            feature.dihedralAngle = joint.angle;
+                            feature.confidence = joint.confidence;
+
+                            // Only count if not already matched
+                            if (matchedJoints.find(&joint) == matchedJoints.end()) {
+                                cornerJointCount++;
+                                matchedJoints.insert(&joint);
+                            }
+                            break;
+                        }
+                    }
+
+                    feature.isCornerWeld = isCornerJoint;
+                    if (!isCornerJoint) {
+                        // Non-weld edges get default values
+                        feature.face1Id = 0;
+                        feature.face2Id = 0;
+                        feature.dihedralAngle = 0;
+                        feature.confidence = 0;
+                    }
+
+                    // Set coordinates
+                    feature.edgeMidpoint[0] = midPnt.X();
+                    feature.edgeMidpoint[1] = midPnt.Y();
+                    feature.edgeMidpoint[2] = midPnt.Z();
+
+                    feature.edgeStart[0] = startPnt.X();
+                    feature.edgeStart[1] = startPnt.Y();
+                    feature.edgeStart[2] = startPnt.Z();
+
+                    feature.edgeEnd[0] = endPnt.X();
+                    feature.edgeEnd[1] = endPnt.Y();
+                    feature.edgeEnd[2] = endPnt.Z();
+
+                    // Check edge type
+                    GeomAbs_CurveType curveType = curveAdaptor.GetType();
+                    feature.edgeType = (curveType == GeomAbs_Line) ? 0 :
+                                      (curveType == GeomAbs_Circle) ? 1 :
+                                      (curveType == GeomAbs_Ellipse) ? 2 :
+                                      (curveType == GeomAbs_BSplineCurve || curveType == GeomAbs_BezierCurve) ? 3 : 4;
+
+                    // For curved edges, sample points along the curve
+                    if (feature.edgeType != 0) {
+                        int numSamples = 20;
+                        for (int i = 0; i <= numSamples; ++i) {
+                            double t = first + (last - first) * i / numSamples;
+                            gp_Pnt pt = curveAdaptor.Value(t);
+                            std::vector<double> point = {pt.X(), pt.Y(), pt.Z()};
+                            feature.curvePoints.push_back(point);
+                        }
+                    }
+
+                    allEdgeFeatures.push_back(feature);
                 }
 
-                // Export to HTML
+                // Export to HTML with ALL edges
                 std::string htmlPath = "C:\\hgtech\\OCCT\\test\\OCCT_HELLO\\weld_visualization.html";
-                if (cornerDetector->exportVisualizationHTML(weldFeatures, htmlPath)) {
+                if (cornerDetector->exportVisualizationHTML(allEdgeFeatures, htmlPath)) {
                     std::cout << "Visualization saved to: " << htmlPath << std::endl;
                     std::cout << "Open the file in a web browser to view the 3D visualization." << std::endl;
+                    std::cout << "Total edges in model: " << totalEdgeCount << std::endl;
+                    std::cout << "Edges displayed: " << allEdgeFeatures.size() << " (excluding edges < 1mm)" << std::endl;
+                    std::cout << "Corner joints detected: " << cornerJointCount << std::endl;
                 }
 
                 delete cornerDetector;

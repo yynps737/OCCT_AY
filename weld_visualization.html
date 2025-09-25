@@ -157,36 +157,66 @@
         scene.add(axesHelper);
 
         const weldData = [
-        {start: [-180, 10, 20], end: [-180, 10, 170], length: 150, confidence: 1, angle: 90, isWeld: true, edgeId: 1},
-        {start: [-180, 10, 20], end: [-180, 150, 20], length: 140, confidence: 1, angle: 90, isWeld: true, edgeId: 2},
-        {start: [-180, 150, 20], end: [-180, 150, 170], length: 150, confidence: 0, angle: 90, isWeld: false, edgeId: 3},
-        {start: [-180, 10, 170], end: [-180, 150, 170], length: 140, confidence: 0, angle: 90, isWeld: false, edgeId: 4},
-        {start: [-180, -150, 20], end: [-180, -150, 170], length: 150, confidence: 0, angle: 90, isWeld: false, edgeId: 5},
-        {start: [-180, -150, 20], end: [-180, -10, 20], length: 140, confidence: 1, angle: 90, isWeld: true, edgeId: 6},
-        {start: [-180, -10, 20], end: [-180, -10, 170], length: 150, confidence: 1, angle: 90, isWeld: true, edgeId: 7},
-        {start: [-180, -150, 170], end: [-180, -10, 170], length: 140, confidence: 0, angle: 90, isWeld: false, edgeId: 8},
-        {start: [200, -10, 20], end: [-180, -10, 20], length: 380, confidence: 1, angle: 90, isWeld: true, edgeId: 9},
-        {start: [200, -10, 20], end: [200, -10, 170], length: 150, confidence: 0, angle: 90, isWeld: false, edgeId: 10},
-        {start: [200, -10, 170], end: [-180, -10, 170], length: 380, confidence: 0, angle: 90, isWeld: false, edgeId: 11},
-        {start: [200, 10, 20], end: [200, 10, 170], length: 150, confidence: 0, angle: 90, isWeld: false, edgeId: 12},
-        {start: [-180, 10, 20], end: [200, 10, 20], length: 380, confidence: 1, angle: 90, isWeld: true, edgeId: 13},
-        {start: [-180, 10, 170], end: [200, 10, 170], length: 380, confidence: 0, angle: 90, isWeld: false, edgeId: 14},
-        {start: [200, 10, 20], end: [200, 150, 20], length: 140, confidence: 0, angle: 90, isWeld: false, edgeId: 15},
-        {start: [-180, 150, 20], end: [200, 150, 20], length: 380, confidence: 0, angle: 90, isWeld: false, edgeId: 16},
-        {start: [200, -150, 20], end: [-180, -150, 20], length: 380, confidence: 0, angle: 90, isWeld: false, edgeId: 17},
-        {start: [200, -150, 20], end: [200, -10, 20], length: 140, confidence: 0, angle: 90, isWeld: false, edgeId: 18},
-        {start: [200, -150, 0], end: [200, -150, 20], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 19},
-        {start: [200, -150, 0], end: [200, 150, 0], length: 300, confidence: 0, angle: 90, isWeld: false, edgeId: 20},
-        {start: [200, 150, 0], end: [200, 150, 20], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 21},
-        {start: [200, -10, 170], end: [200, 10, 170], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 22},
-        {start: [-200, -150, 0], end: [-200, -150, 170], length: 170, confidence: 0, angle: 90, isWeld: false, edgeId: 23},
-        {start: [200, -150, 0], end: [-200, -150, 0], length: 400, confidence: 0, angle: 90, isWeld: false, edgeId: 24},
-        {start: [-180, -150, 170], end: [-200, -150, 170], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 25},
-        {start: [-200, 150, 0], end: [200, 150, 0], length: 400, confidence: 0, angle: 90, isWeld: false, edgeId: 26},
-        {start: [-200, 150, 0], end: [-200, 150, 170], length: 170, confidence: 0, angle: 90, isWeld: false, edgeId: 27},
-        {start: [-200, 150, 170], end: [-180, 150, 170], length: 20, confidence: 0, angle: 90, isWeld: false, edgeId: 28},
-        {start: [-200, 150, 0], end: [-200, -150, 0], length: 300, confidence: 0, angle: 90, isWeld: false, edgeId: 29},
-        {start: [-200, 150, 170], end: [-200, -150, 170], length: 300, confidence: 0, angle: 90, isWeld: false, edgeId: 30}
+        {start: [-5.77201e-15, 25, 5], end: [-5.77629e-15, 25, 1.93274e-18], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 1, edgeType: 0},
+        {start: [2.71467e-15, -25, -1.93274e-18], end: [-5.77629e-15, 25, 1.93274e-18], length: 78.5398, confidence: 0, angle: 0, isWeld: false, edgeId: 2, edgeType: 1, curvePoints: [[2.71467e-15, -25, -1.93274e-18], [-3.91086, -24.6922, 1.43612e-18], [-7.72542, -23.7764, 4.76962e-18], [-11.3498, -22.2752, 7.98567e-18], [-14.6946, -20.2254, 1.10051e-17], [-17.6777, -17.6777, 1.37535e-17], [-20.2254, -14.6946, 1.61633e-17], [-22.2752, -11.3498, 1.81751e-17], [-23.7764, -7.72542, 1.97394e-17], [-24.6922, -3.91086, 2.08176e-17], [-25, -4.24548e-15, 2.13832e-17], [-24.6922, 3.91086, 2.14223e-17], [-23.7764, 7.72542, 2.09339e-17], [-22.2752, 11.3498, 1.993e-17], [-20.2254, 14.6946, 1.84354e-17], [-17.6777, 17.6777, 1.64868e-17], [-14.6946, 20.2254, 1.41323e-17], [-11.3498, 22.2752, 1.14298e-17], [-7.72542, 23.7764, 8.44591e-18], [-3.91086, 24.6922, 5.25401e-18], [-5.77629e-15, 25, 1.93274e-18]]},
+        {start: [2.71895e-15, -25, 5], end: [2.71467e-15, -25, -1.93274e-18], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 3, edgeType: 0},
+        {start: [2.71895e-15, -25, 5], end: [-5.77201e-15, 25, 5], length: 78.5398, confidence: 0, angle: 0, isWeld: false, edgeId: 4, edgeType: 1, curvePoints: [[2.71895e-15, -25, 5], [-3.91086, -24.6922, 5], [-7.72542, -23.7764, 5], [-11.3498, -22.2752, 5], [-14.6946, -20.2254, 5], [-17.6777, -17.6777, 5], [-20.2254, -14.6946, 5], [-22.2752, -11.3498, 5], [-23.7764, -7.72542, 5], [-24.6922, -3.91086, 5], [-25, -4.24587e-15, 5], [-24.6922, 3.91086, 5], [-23.7764, 7.72542, 5], [-22.2752, 11.3498, 5], [-20.2254, 14.6946, 5], [-17.6777, 17.6777, 5], [-14.6946, 20.2254, 5], [-11.3498, 22.2752, 5], [-7.72542, 23.7764, 5], [-3.91086, 24.6922, 5], [-5.77201e-15, 25, 5]]},
+        {start: [-90.4002, -327.955, 5], end: [-96.2998, 328, 5], length: 655.982, confidence: 0, angle: 90, isWeld: true, edgeId: 5, edgeType: 0},
+        {start: [-95.4, -328, 5], end: [-90.4002, -327.955, 5], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 6, edgeType: 0},
+        {start: [-95.4, -328, 5], end: [102, -328, 5], length: 197.4, confidence: 0, angle: 0, isWeld: false, edgeId: 7, edgeType: 0},
+        {start: [97.0001, -327.972, 5], end: [102, -328, 5], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 8, edgeType: 0},
+        {start: [100.7, 328, 5], end: [97.0001, -327.972, 5], length: 655.982, confidence: 0, angle: 90, isWeld: true, edgeId: 9, edgeType: 0},
+        {start: [100.7, 328, 5], end: [-96.2998, 328, 5], length: 197, confidence: 0, angle: 0, isWeld: false, edgeId: 10, edgeType: 0},
+        {start: [4.9864e-15, -25, 5], end: [8.74191e-15, 25, 5], length: 78.5398, confidence: 0, angle: 0, isWeld: false, edgeId: 11, edgeType: 1, curvePoints: [[4.9864e-15, -25, 5], [3.91086, -24.6922, 5], [7.72542, -23.7764, 5], [11.3498, -22.2752, 5], [14.6946, -20.2254, 5], [17.6777, -17.6777, 5], [20.2254, -14.6946, 5], [22.2752, -11.3498, 5], [23.7764, -7.72542, 5], [24.6922, -3.91086, 5], [25, -7.20721e-15, 5], [24.6922, 3.91086, 5], [23.7764, 7.72542, 5], [22.2752, 11.3498, 5], [20.2254, 14.6946, 5], [17.6777, 17.6777, 5], [14.6946, 20.2254, 5], [11.3498, 22.2752, 5], [7.72542, 23.7764, 5], [3.91086, 24.6922, 5], [8.74191e-15, 25, 5]]},
+        {start: [3.46945e-16, 25, 1.93274e-18], end: [2.71467e-15, -25, -1.93274e-18], length: 78.5398, confidence: 0, angle: 0, isWeld: false, edgeId: 12, edgeType: 1, curvePoints: [[3.46945e-16, 25, 1.93274e-18], [3.91086, 24.6922, -1.43612e-18], [7.72542, 23.7764, -4.76962e-18], [11.3498, 22.2752, -7.98567e-18], [14.6946, 20.2254, -1.10051e-17], [17.6777, 17.6777, -1.37535e-17], [20.2254, 14.6946, -1.61633e-17], [22.2752, 11.3498, -1.81751e-17], [23.7764, 7.72542, -1.97394e-17], [24.6922, 3.91086, -2.08176e-17], [25, 1.18386e-15, -2.13832e-17], [24.6922, -3.91086, -2.14223e-17], [23.7764, -7.72542, -2.09339e-17], [22.2752, -11.3498, -1.993e-17], [20.2254, -14.6946, -1.84354e-17], [17.6777, -17.6777, -1.64868e-17], [14.6946, -20.2254, -1.41323e-17], [11.3498, -22.2752, -1.14298e-17], [7.72542, -23.7764, -8.44591e-18], [3.91086, -24.6922, -5.25401e-18], [2.71467e-15, -25, -1.93274e-18]]},
+        {start: [-166.7, 328, 1.67941e-16], end: [-166.7, -328, 1.17225e-16], length: 656, confidence: 0, angle: 0, isWeld: false, edgeId: 13, edgeType: 0},
+        {start: [166.7, 328, -1.17225e-16], end: [-166.7, 328, 1.67941e-16], length: 333.4, confidence: 0, angle: 0, isWeld: false, edgeId: 14, edgeType: 0},
+        {start: [166.7, -328, -1.67941e-16], end: [166.7, 328, -1.17225e-16], length: 656, confidence: 0, angle: 0, isWeld: false, edgeId: 15, edgeType: 0},
+        {start: [-166.7, -328, 1.17225e-16], end: [166.7, -328, -1.67941e-16], length: 333.4, confidence: 0, angle: 0, isWeld: false, edgeId: 16, edgeType: 0},
+        {start: [-96.3002, 328.045, 78], end: [-96.3002, 328.045, 5], length: 73, confidence: 0, angle: 0, isWeld: false, edgeId: 17, edgeType: 0},
+        {start: [-96.3002, 328.045, 78], end: [-96.1716, 313.746, 92], length: 20.0122, confidence: 0, angle: 0, isWeld: false, edgeId: 18, edgeType: 0},
+        {start: [-90.5288, -313.656, 92], end: [-96.1716, 313.746, 92], length: 627.427, confidence: 0, angle: 0, isWeld: false, edgeId: 19, edgeType: 0},
+        {start: [-90.5288, -313.656, 92], end: [-90.4002, -327.955, 78], length: 20.0122, confidence: 0, angle: 0, isWeld: false, edgeId: 20, edgeType: 0},
+        {start: [-90.4002, -327.955, 78], end: [-90.4002, -327.955, 5], length: 73, confidence: 0, angle: 0, isWeld: false, edgeId: 21, edgeType: 0},
+        {start: [-90.4002, -327.955, 78], end: [-95.4, -328, 78], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 22, edgeType: 0},
+        {start: [-95.4, -328, 78], end: [-95.4, -328, 5], length: 73, confidence: 0, angle: 0, isWeld: false, edgeId: 23, edgeType: 0},
+        {start: [166.7, -328, 5], end: [166.7, -328, -1.67941e-16], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 24, edgeType: 0},
+        {start: [102, -328, 5], end: [166.7, -328, 5], length: 64.7, confidence: 0, angle: 0, isWeld: false, edgeId: 25, edgeType: 0},
+        {start: [-166.7, -328, 5], end: [-95.4, -328, 5], length: 71.3, confidence: 0, angle: 0, isWeld: false, edgeId: 26, edgeType: 0},
+        {start: [-166.7, -328, 5], end: [-166.7, -328, 1.17225e-16], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 27, edgeType: 0},
+        {start: [102, -328, 78], end: [102, -328, 5], length: 73, confidence: 0, angle: 0, isWeld: false, edgeId: 28, edgeType: 0},
+        {start: [102, -328, 78], end: [97.0001, -327.972, 78], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 29, edgeType: 0},
+        {start: [97.0001, -327.972, 78], end: [97.0001, -327.972, 5], length: 73, confidence: 0, angle: 0, isWeld: false, edgeId: 30, edgeType: 0},
+        {start: [100.619, 313.728, 92], end: [97.0807, -313.672, 92], length: 627.41, confidence: 0, angle: 0, isWeld: false, edgeId: 31, edgeType: 0},
+        {start: [100.619, 313.728, 92], end: [100.7, 328.028, 78], length: 20.0122, confidence: 0, angle: 0, isWeld: false, edgeId: 32, edgeType: 0},
+        {start: [100.7, 328.028, 78], end: [100.7, 328.028, 5], length: 73, confidence: 0, angle: 0, isWeld: false, edgeId: 33, edgeType: 0},
+        {start: [97.0001, -327.972, 78], end: [97.0807, -313.672, 92], length: 20.0122, confidence: 0, angle: 0, isWeld: false, edgeId: 34, edgeType: 0},
+        {start: [-166.7, 328, 5], end: [-166.7, 328, 1.67941e-16], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 35, edgeType: 0},
+        {start: [-101.3, 328, 5], end: [-166.7, 328, 5], length: 65.4, confidence: 0, angle: 0, isWeld: false, edgeId: 36, edgeType: 0},
+        {start: [-96.2998, 328, 5], end: [-101.3, 328, 5], length: 5.0002, confidence: 0, angle: 0, isWeld: false, edgeId: 37, edgeType: 0},
+        {start: [105.7, 328, 5], end: [100.7, 328, 5], length: 5.00008, confidence: 0, angle: 0, isWeld: false, edgeId: 38, edgeType: 0},
+        {start: [166.7, 328, 5], end: [105.7, 328, 5], length: 61, confidence: 0, angle: 0, isWeld: false, edgeId: 39, edgeType: 0},
+        {start: [166.7, 328, 5], end: [166.7, 328, -1.17225e-16], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 40, edgeType: 0},
+        {start: [-166.7, 328, 5], end: [-166.7, -328, 5], length: 656, confidence: 0, angle: 0, isWeld: false, edgeId: 41, edgeType: 0},
+        {start: [166.7, -328, 5], end: [166.7, 328, 5], length: 656, confidence: 0, angle: 0, isWeld: false, edgeId: 42, edgeType: 0},
+        {start: [-101.3, 328, 78], end: [-101.3, 328, 5], length: 73, confidence: 0, angle: 0, isWeld: false, edgeId: 43, edgeType: 0},
+        {start: [-101.3, 328, 78], end: [-96.3002, 328.045, 78], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 44, edgeType: 0},
+        {start: [-96.3002, 328.045, 5], end: [-101.3, 328, 5], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 45, edgeType: 0},
+        {start: [-101.171, 313.701, 92], end: [-101.3, 328, 78], length: 20.0122, confidence: 0, angle: 0, isWeld: false, edgeId: 46, edgeType: 0},
+        {start: [-96.1716, 313.746, 92], end: [-101.171, 313.701, 92], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 47, edgeType: 0},
+        {start: [-101.171, 313.701, 92], end: [-95.5286, -313.701, 92], length: 627.427, confidence: 0, angle: 0, isWeld: false, edgeId: 48, edgeType: 0},
+        {start: [-95.5286, -313.701, 92], end: [-90.5288, -313.656, 92], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 49, edgeType: 0},
+        {start: [-95.4, -328, 78], end: [-95.5286, -313.701, 92], length: 20.0122, confidence: 0, angle: 0, isWeld: false, edgeId: 50, edgeType: 0},
+        {start: [-101.3, 328, 5], end: [-95.4, -328, 5], length: 656.027, confidence: 0, angle: 90, isWeld: true, edgeId: 51, edgeType: 0},
+        {start: [102, -328, 5], end: [105.7, 328, 5], length: 656.01, confidence: 0, angle: 90, isWeld: true, edgeId: 52, edgeType: 0},
+        {start: [105.7, 328, 78], end: [105.7, 328, 5], length: 73, confidence: 0, angle: 0, isWeld: false, edgeId: 53, edgeType: 0},
+        {start: [105.7, 328, 78], end: [105.619, 313.7, 92], length: 20.0122, confidence: 0, angle: 0, isWeld: false, edgeId: 54, edgeType: 0},
+        {start: [102.081, -313.7, 92], end: [105.619, 313.7, 92], length: 627.41, confidence: 0, angle: 0, isWeld: false, edgeId: 55, edgeType: 0},
+        {start: [102.081, -313.7, 92], end: [102, -328, 78], length: 20.0122, confidence: 0, angle: 0, isWeld: false, edgeId: 56, edgeType: 0},
+        {start: [97.0807, -313.672, 92], end: [102.081, -313.7, 92], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 57, edgeType: 0},
+        {start: [105.619, 313.7, 92], end: [100.619, 313.728, 92], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 58, edgeType: 0},
+        {start: [100.7, 328.028, 78], end: [105.7, 328, 78], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 59, edgeType: 0},
+        {start: [105.7, 328, 5], end: [100.7, 328.028, 5], length: 5, confidence: 0, angle: 0, isWeld: false, edgeId: 60, edgeType: 0}
     ];
 
         // Groups for organizing objects
@@ -202,8 +232,18 @@
         // Function to add edge to scene
         function addEdge(edge, index) {
             const points = [];
-            points.push(new THREE.Vector3(...edge.start));
-            points.push(new THREE.Vector3(...edge.end));
+
+            // Check if it's a curve with discretized points
+            if (edge.curvePoints && edge.curvePoints.length > 0) {
+                // Use the discretized curve points
+                edge.curvePoints.forEach(pt => {
+                    points.push(new THREE.Vector3(...pt));
+                });
+            } else {
+                // Straight line - use start and end points
+                points.push(new THREE.Vector3(...edge.start));
+                points.push(new THREE.Vector3(...edge.end));
+            }
 
             const geometry = new THREE.BufferGeometry().setFromPoints(points);
 

@@ -175,8 +175,18 @@
         // Function to add edge to scene
         function addEdge(edge, index) {
             const points = [];
-            points.push(new THREE.Vector3(...edge.start));
-            points.push(new THREE.Vector3(...edge.end));
+
+            // Check if it's a curve with discretized points
+            if (edge.curvePoints && edge.curvePoints.length > 0) {
+                // Use the discretized curve points
+                edge.curvePoints.forEach(pt => {
+                    points.push(new THREE.Vector3(...pt));
+                });
+            } else {
+                // Straight line - use start and end points
+                points.push(new THREE.Vector3(...edge.start));
+                points.push(new THREE.Vector3(...edge.end));
+            }
 
             const geometry = new THREE.BufferGeometry().setFromPoints(points);
 

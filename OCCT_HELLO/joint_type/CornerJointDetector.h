@@ -37,6 +37,10 @@ public:
         double normal2[3];        // Face 2 normal vector
         double bisectorDir[3];    // Angle bisector direction
 
+        // Edge geometry type
+        int edgeType;             // 0=Line, 1=Circle, 2=Ellipse, 3=BSpline, 4=Other
+        std::vector<std::vector<double>> curvePoints; // Discretized points for curves
+
         // 测试点状态
         enum PointState { IN, OUT, ON };
         PointState testPointOutState;  // 外测试点状态
@@ -84,16 +88,19 @@ public:
         double maxDihedralAngle = 105.0;
 
         // Edge length filter (mm)
-        double minEdgeLength = 50.0;  // Increased to 50mm to exclude small connection features
+        double minEdgeLength = 20.0;  // Filter out very small edges that are likely not welds
 
         // Boundary distance filter (mm)
-        double minBoundaryDistance = 5.0;
+        double minBoundaryDistance = 0.0;  // Disabled for multi-part assemblies
 
         // 测试点偏移距离（mm）
         double testPointOffset = 1.0;
 
         // Numerical tolerance
         double tolerance = 1e-6;
+
+        // Is multi-solid assembly (affects concavity test)
+        bool isMultiSolid = false;
 
         // Enable debug output
         bool enableDebugOutput = true;
@@ -114,7 +121,8 @@ private:
                       const TopoDS_Face& face1,
                       const TopoDS_Face& face2,
                       const TopoDS_Solid& solid,
-                      WeldFeatures& features);
+                      WeldFeatures& features,
+                      bool isMultiSolid = false);
 
     double calculateBoundaryDistance(const TopoDS_Edge& edge,
                                     const TopoDS_Solid& solid);

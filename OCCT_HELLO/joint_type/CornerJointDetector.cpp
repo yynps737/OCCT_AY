@@ -5,9 +5,13 @@
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepClass3d_SolidClassifier.hxx>
+#include <BRepGProp.hxx>
 #include <BRep_Tool.hxx>
+#include <GProp_GProps.hxx>
 #include <Bnd_Box.hxx>
 #include <GCPnts_AbscissaPoint.hxx>
+#include <GCPnts_TangentialDeflection.hxx>
+#include <GeomAbs_CurveType.hxx>
 #include <GeomLProp_SLProps.hxx>
 #include <TopExp.hxx>
 #include <TopExp_Explorer.hxx>
@@ -41,15 +45,33 @@ bool CornerJointDetector::isCornerJoint(const TopoDS_Edge& edge,
                                         const TopoDS_Face& face1,
                                         const TopoDS_Face& face2) {
     // 简化版本，缺少solid无法进行完整的凹凸性测试
-    // 只能基于二面角和平面性判断
-    double angle = calculateDihedralAngle(face1, face2, edge);
-    double length = getEdgeLength(edge);
-    bool planar = areBothFacesPlanar(face1, face2);
+    // 优化：直接计算必要信息，避免重复创建适配器
 
-    return (angle >= m_config.minDihedralAngle &&
-            angle <= m_config.maxDihedralAngle &&
-            length > m_config.minEdgeLength &&
-            planar);
+    // 创建一次适配器
+    BRepAdaptor_Curve curveAdaptor(edge);
+    double length = GCPnts_AbscissaPoint::Length(curveAdaptor);
+
+    // 长度过滤
+    if (length <= m_config.minEdgeLength) {
+        return false;
+    }
+
+    // 平面性检查
+    if (!areBothFacesPlanar(face1, face2)) {
+        return false;
+    }
+
+    // 计算法向量和二面角
+    double normal1[3], normal2[3];
+    calculateFaceNormal(face1, edge, normal1);
+    calculateFaceNormal(face2, edge, normal2);
+
+    double dot = normal1[0] * normal2[0] + normal1[1] * normal2[1] + normal1[2] * normal2[2];
+    if (dot > 1.0) dot = 1.0;
+    if (dot < -1.0) dot = -1.0;
+    double angle = std::acos(std::abs(dot)) * 180.0 / M_PI;
+
+    return (angle >= m_config.minDihedralAngle && angle <= m_config.maxDihedralAngle);
 }
 
 bool CornerJointDetector::isCornerJoint(const TopoDS_Edge& edge,
@@ -58,6 +80,7 @@ bool CornerJointDetector::isCornerJoint(const TopoDS_Edge& edge,
                                         const TopoDS_Solid& solid) {
     WeldFeatures features = analyzeEdge(edge, face1, face2, solid);
 
+    // Print debug output for troubleshooting
     if (m_config.enableDebugOutput) {
         printFeatures(features);
     }
@@ -70,8 +93,10 @@ bool CornerJointDetector::isCornerJointWithConfidence(const TopoDS_Edge& edge,
                                                       const TopoDS_Face& face2,
                                                       const TopoDS_Solid& solid,
                                                       double& confidence) {
+    // Simply call the base function and get features
     WeldFeatures features = analyzeEdge(edge, face1, face2, solid);
 
+    // Print debug output for troubleshooting
     if (m_config.enableDebugOutput) {
         printFeatures(features);
     }
@@ -89,24 +114,96 @@ CornerJointDetector::WeldFeatures CornerJointDetector::analyzeEdge(
     const TopoDS_Solid& solid) {
 
     WeldFeatures features;
+    // Initialize IDs to -1 (unknown) by default
+    features.edgeId = -1;
+    features.face1Id = -1;
+    features.face2Id = -1;
 
-    // 1. 基础信息
-    features.edgeLength = getEdgeLength(edge);
-    getEdgeMidpoint(edge, features.edgeMidpoint);
-    getEdgeEndpoints(edge, features.edgeStart, features.edgeEnd);
+    // 1. 基础信息 - 创建一次BRepAdaptor_Curve并重用
+    BRepAdaptor_Curve curveAdaptor(edge);
+
+    // 计算边长
+    features.edgeLength = GCPnts_AbscissaPoint::Length(curveAdaptor);
+
+    // 获取参数范围
+    double uFirst = curveAdaptor.FirstParameter();
+    double uLast = curveAdaptor.LastParameter();
+    double uMid = (uFirst + uLast) / 2.0;
+
+    // 获取中点
+    gp_Pnt midPnt = curveAdaptor.Value(uMid);
+    features.edgeMidpoint[0] = midPnt.X();
+    features.edgeMidpoint[1] = midPnt.Y();
+    features.edgeMidpoint[2] = midPnt.Z();
+
+    // 获取端点
+    gp_Pnt startPnt = curveAdaptor.Value(uFirst);
+    features.edgeStart[0] = startPnt.X();
+    features.edgeStart[1] = startPnt.Y();
+    features.edgeStart[2] = startPnt.Z();
+
+    gp_Pnt endPnt = curveAdaptor.Value(uLast);
+    features.edgeEnd[0] = endPnt.X();
+    features.edgeEnd[1] = endPnt.Y();
+    features.edgeEnd[2] = endPnt.Z();
+
+    // 检查边缘几何类型并离散化曲线
+    GeomAbs_CurveType curveType = curveAdaptor.GetType();
+    switch(curveType) {
+        case GeomAbs_Line:
+            features.edgeType = 0;  // 直线
+            break;
+        case GeomAbs_Circle:
+            features.edgeType = 1;  // 圆/圆弧
+            break;
+        case GeomAbs_Ellipse:
+            features.edgeType = 2;  // 椭圆
+            break;
+        case GeomAbs_BSplineCurve:
+        case GeomAbs_BezierCurve:
+            features.edgeType = 3;  // B样条/贝塞尔
+            break;
+        default:
+            features.edgeType = 4;  // 其他
+            break;
+    }
+
+    // 对非直线边缘进行离散化
+    if (features.edgeType != 0) {
+        // 使用GCPnts_TangentialDeflection进行自适应离散化
+        GCPnts_TangentialDeflection discretizer(curveAdaptor, uFirst, uLast,
+                                                0.1,    // 角度偏差
+                                                0.5);   // 距离偏差
+
+        int nbPoints = discretizer.NbPoints();
+        features.curvePoints.clear();
+        features.curvePoints.reserve(nbPoints);
+
+        for (int i = 1; i <= nbPoints; i++) {
+            gp_Pnt pt = discretizer.Value(i);
+            std::vector<double> point = {pt.X(), pt.Y(), pt.Z()};
+            features.curvePoints.push_back(point);
+        }
+    }
 
     // 2. 计算法向量
     calculateFaceNormal(face1, edge, features.normal1);
     calculateFaceNormal(face2, edge, features.normal2);
 
     // 3. 计算二面角和点积
-    features.dihedralAngle = calculateDihedralAngle(face1, face2, edge);
     features.normalDotProduct = features.normal1[0] * features.normal2[0] +
                                 features.normal1[1] * features.normal2[1] +
                                 features.normal1[2] * features.normal2[2];
 
+    // 使用已计算的法向量计算二面角
+    double dot = features.normalDotProduct;
+    if (dot > 1.0) dot = 1.0;
+    if (dot < -1.0) dot = -1.0;
+    double angleRad = std::acos(std::abs(dot));
+    features.dihedralAngle = angleRad * 180.0 / M_PI;
+
     // 4. 凹凸性测试（核心算法）
-    features.isConcave = testConcavity(edge, face1, face2, solid, features);
+    features.isConcave = testConcavity(edge, face1, face2, solid, features, m_config.isMultiSolid);
 
     // 5. 边界距离计算
     features.distToBoundary = calculateBoundaryDistance(edge, solid);
@@ -114,13 +211,64 @@ CornerJointDetector::WeldFeatures CornerJointDetector::analyzeEdge(
     // 6. 平面性检查
     features.bothFacesPlanar = areBothFacesPlanar(face1, face2);
 
-    // 7. 综合判定
+    // 7. 检查是否为倒角边
+    // 倒角边的特征：短边、角度不是完全90度、相邻面之一很小
+    bool isChamfer = false;
+    if (features.edgeLength <= 25.0) {
+        // 可能是倒角边，检查相邻面的大小
+        GProp_GProps props1, props2;
+        BRepGProp::SurfaceProperties(face1, props1);
+        BRepGProp::SurfaceProperties(face2, props2);
+        double area1 = props1.Mass();
+        double area2 = props2.Mass();
+
+        // 调试：总是输出面积信息（对于短边）
+        if (m_config.enableDebugOutput && features.edgeLength <= 25.0) {
+            std::cout << "    [DEBUG] Short edge analysis: L=" << features.edgeLength
+                      << "mm, angle=" << features.dihedralAngle
+                      << "deg, areas=" << area1 << "/" << area2 << "mm²" << std::endl;
+        }
+
+        // 倒角边判定：
+        // 1. 角度不是完全90度 OR
+        // 2. 其中一个面很小（倒角面通常很小）
+        // 3. 对于20mm左右的短边，如果一个面是100mm²左右，很可能是倒角
+        bool angleNotPerfect = std::abs(features.dihedralAngle - 90.0) > 0.5;
+        bool smallFace = (area1 < 200.0 || area2 < 200.0);
+        double minArea = std::min(area1, area2);
+        double maxArea = std::max(area1, area2);
+        bool highRatio = (minArea > 0 && features.edgeLength * features.edgeLength / minArea > 0.5);
+
+        // 特殊情况：20mm边，一个面约100mm²，另一个面很大
+        bool typicalChamfer = (features.edgeLength >= 15.0 && features.edgeLength <= 25.0) &&
+                              (minArea >= 90.0 && minArea <= 110.0) &&
+                              (maxArea > 10000.0);
+
+        if ((angleNotPerfect && smallFace) || typicalChamfer || highRatio) {
+            isChamfer = true;
+            if (m_config.enableDebugOutput) {
+                std::cout << "    [DEBUG] CHAMFER DETECTED! angleNotPerfect=" << angleNotPerfect
+                          << ", smallFace=" << smallFace
+                          << ", typicalChamfer=" << typicalChamfer
+                          << ", highRatio=" << highRatio << std::endl;
+            }
+        }
+    }
+
+    // 8. 综合判定
     bool angleOK = (features.dihedralAngle >= m_config.minDihedralAngle &&
                     features.dihedralAngle <= m_config.maxDihedralAngle);
     bool lengthOK = (features.edgeLength > m_config.minEdgeLength);
     bool boundaryOK = (features.distToBoundary > m_config.minBoundaryDistance);
 
-    features.isCornerWeld = features.isConcave && angleOK && lengthOK && boundaryOK && features.bothFacesPlanar;
+    // Debug: Print boundary check details
+    if (m_config.enableDebugOutput) {
+        std::cout << "    [DEBUG] Boundary check: distToBoundary=" << features.distToBoundary
+                  << ", minBoundaryDistance=" << m_config.minBoundaryDistance
+                  << ", boundaryOK=" << (boundaryOK ? "true" : "false") << std::endl;
+    }
+
+    features.isCornerWeld = features.isConcave && angleOK && lengthOK && boundaryOK && features.bothFacesPlanar && !isChamfer;
 
     // 8. 计算置信度
     features.confidence = 0.0;
@@ -146,7 +294,8 @@ bool CornerJointDetector::testConcavity(const TopoDS_Edge& edge,
                                         const TopoDS_Face& face1,
                                         const TopoDS_Face& face2,
                                         const TopoDS_Solid& solid,
-                                        WeldFeatures& features) {
+                                        WeldFeatures& features,
+                                        bool isMultiSolid) {
     // 角平分线分类法
 
     // 1. 计算角平分线方向
@@ -210,10 +359,24 @@ bool CornerJointDetector::testConcavity(const TopoDS_Edge& edge,
     // 5. 判定凹凸性
     // 凹边：角平分线正方向指向外部，负方向指向内部
     // 或者：两个点都在内部（内腔角）
-    bool isConcave = (features.testPointOutState == WeldFeatures::OUT &&
+    // 对于多实体情况：OO也可能是凹边（当内部被另一个实体填充时）
+    bool isConcave;
+    if (isMultiSolid) {
+        // 多实体：OO状态可能是凹边（当内部被另一个实体填充时）
+        isConcave = (features.testPointOutState == WeldFeatures::OUT &&
                      features.testPointInState == WeldFeatures::IN) ||
-                     (features.testPointOutState == WeldFeatures::IN &&
-                     features.testPointInState == WeldFeatures::IN);  // II状态也视为凹边
+                    (features.testPointOutState == WeldFeatures::IN &&
+                     features.testPointInState == WeldFeatures::IN) ||
+                    (features.testPointOutState == WeldFeatures::OUT &&
+                     features.testPointInState == WeldFeatures::OUT &&
+                     features.dihedralAngle >= 75.0 && features.dihedralAngle <= 105.0);
+    } else {
+        // 单实体：OO状态一定是凸边，不是焊缝
+        isConcave = (features.testPointOutState == WeldFeatures::OUT &&
+                     features.testPointInState == WeldFeatures::IN) ||
+                    (features.testPointOutState == WeldFeatures::IN &&
+                     features.testPointInState == WeldFeatures::IN);
+    }
 
     return isConcave;
 }
@@ -223,24 +386,16 @@ bool CornerJointDetector::testConcavity(const TopoDS_Edge& edge,
 double CornerJointDetector::calculateDihedralAngle(const TopoDS_Face& face1,
                                                    const TopoDS_Face& face2,
                                                    const TopoDS_Edge& edge) {
+    // Optimized: now just a wrapper for compatibility
     double normal1[3], normal2[3];
     calculateFaceNormal(face1, edge, normal1);
     calculateFaceNormal(face2, edge, normal2);
 
-    // 计算点积
-    double dot = normal1[0] * normal2[0] +
-                 normal1[1] * normal2[1] +
-                 normal1[2] * normal2[2];
-
-    // 限制在[-1, 1]范围内
+    double dot = normal1[0] * normal2[0] + normal1[1] * normal2[1] + normal1[2] * normal2[2];
     if (dot > 1.0) dot = 1.0;
     if (dot < -1.0) dot = -1.0;
 
-    // 二面角 = arccos(|dot|)
-    double angleRad = std::acos(std::abs(dot));
-    double angleDeg = angleRad * 180.0 / M_PI;
-
-    return angleDeg;
+    return std::acos(std::abs(dot)) * 180.0 / M_PI;
 }
 
 void CornerJointDetector::calculateFaceNormal(const TopoDS_Face& face,
@@ -500,7 +655,21 @@ bool CornerJointDetector::exportVisualizationHTML(const std::vector<WeldFeatures
         weldDataJs << "confidence: " << weld.confidence << ", ";
         weldDataJs << "angle: " << weld.dihedralAngle << ", ";
         weldDataJs << "isWeld: " << (weld.isCornerWeld ? "true" : "false") << ", ";
-        weldDataJs << "edgeId: " << weld.edgeId;
+        weldDataJs << "edgeId: " << weld.edgeId << ", ";
+        weldDataJs << "edgeType: " << weld.edgeType;
+
+        // Add curve points if it's a curve
+        if (weld.edgeType != 0 && !weld.curvePoints.empty()) {
+            weldDataJs << ", curvePoints: [";
+            for (size_t j = 0; j < weld.curvePoints.size(); ++j) {
+                if (j > 0) weldDataJs << ", ";
+                weldDataJs << "[" << weld.curvePoints[j][0] << ", "
+                          << weld.curvePoints[j][1] << ", "
+                          << weld.curvePoints[j][2] << "]";
+            }
+            weldDataJs << "]";
+        }
+
         weldDataJs << "}";
     }
 

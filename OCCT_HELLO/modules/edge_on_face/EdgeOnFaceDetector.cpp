@@ -11,6 +11,7 @@
 #include <gp_Pnt2d.hxx>
 #include <TopLoc_Location.hxx>
 #include <GCPnts_UniformAbscissa.hxx>
+#include <GCPnts_AbscissaPoint.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <TopTools_ListOfShape.hxx>
 #include <iostream>
@@ -160,11 +161,18 @@ namespace EdgeOnFace {
         for (int edgeIdx = 1; edgeIdx <= edges.Extent(); ++edgeIdx) {
             const TopoDS_Edge& edge = TopoDS::Edge(edges(edgeIdx));
 
+            // 计算边长用于调试
+            BRepAdaptor_Curve curveAdaptor(edge);
+            double edgeLength = GCPnts_AbscissaPoint::Length(curveAdaptor);
+
             // 获取该边所属的实体
             int edgeSolidId = (edgeToSolid.count(edgeIdx) > 0) ? edgeToSolid[edgeIdx] : 0;
 
             // 获取相邻面
             std::set<int> adjacentFaces = getAdjacentFaces(edgeIdx);
+
+            // 只对跨实体的边进行详细检查
+            bool checkThisEdge = false;
 
             // 检查与所有非相邻面
             for (int faceIdx = 1; faceIdx <= faces.Extent(); ++faceIdx) {
@@ -178,6 +186,8 @@ namespace EdgeOnFace {
                 if (edgeSolidId > 0 && faceSolidId > 0 && edgeSolidId == faceSolidId) {
                     continue;
                 }
+
+                checkThisEdge = true;
 
                 const TopoDS_Face& face = TopoDS::Face(faces(faceIdx));
 
@@ -195,6 +205,12 @@ namespace EdgeOnFace {
 
                     results.push_back(relation);
                 }
+            }
+
+            // 调试输出：显示可能遗漏的115mm边
+            if (checkThisEdge && std::abs(edgeLength - 115.0) < 5.0) {
+                std::cout << "Debug: Edge" << edgeIdx << " (Solid_" << edgeSolidId
+                          << ") has length " << edgeLength << "mm but no edge-on-face match found" << std::endl;
             }
         }
 
