@@ -306,8 +306,22 @@ JointDetector::JointType JointDetector::identifyJointType(const TopoDS_Edge& edg
         return BUTT_JOINT;
     }
 
-    if (config.detectCornerJoint && cornerDetector->isCornerJoint(edge, face1, face2)) {
-        return CORNER_JOINT;
+    // 使用改进的Corner Joint检测器
+    if (config.detectCornerJoint) {
+        // 对于单体情况，使用新的带solid的方法
+        if (solids.Extent() == 1) {
+            const TopoDS_Solid& solid = TopoDS::Solid(solids(1));
+            // 使用临时变量来获取置信度（这里不使用）
+            double tempConfidence = 0.0;
+            if (cornerDetector->isCornerJointWithConfidence(edge, face1, face2, solid, tempConfidence)) {
+                return CORNER_JOINT;
+            }
+        } else {
+            // 多体情况仍使用传统方法
+            if (cornerDetector->isCornerJoint(edge, face1, face2)) {
+                return CORNER_JOINT;
+            }
+        }
     }
 
     if (config.detectTJoint && tDetector->isTJoint(edge, face1, face2)) {
